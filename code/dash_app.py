@@ -12,24 +12,11 @@ import numpy as np
 from dash_core_components import Tabs, Tab
 from pgmpy.inference import VariableElimination
 
+data= pd.read_pickle('/opt/app/filtered_data.pkl')
+data_numeric= pd.read_pickle('/opt/app/filtered_data_numeric.pkl')
 
+model1 = pd.read_pickle('/opt/app/model1.pkl')
 
-path_modelo = '/home/ubuntu/'  
-path_data = '/home/ubuntu/' 
-
-
-path_modelo = '/Users/juandramirezj/Documents/Universidad_MIIND/ACTD/proyecto_final/project3JuSa/models'
-path_data = '/Users/juandramirezj/Documents/Universidad_MIIND/ACTD/proyecto_final/project3JuSa/data'
-
-
-with open(path_data+'/filtered_data.pkl', "rb") as file:
-    data = pickle.load(file)
-
-with open(path_data+'/filtered_data_numeric.pkl', "rb") as file:
-    data_numeric = pickle.load(file)
-
-with open(path_modelo+'/model1.pkl', "rb") as file:
-    model1 = pickle.load(file)
 
 valid_values = ['Estrato 1', 'Estrato 2', 'Estrato 3',  'Estrato 4', 'Estrato 5', 'Estrato 6', 'Sin Estrato']
 
@@ -132,6 +119,7 @@ for column, values in unique_values.items():
 
 # Adjust your app layout and callback accordingly...
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server 
 
 app.layout = dbc.Container([
     dbc.Tabs([
