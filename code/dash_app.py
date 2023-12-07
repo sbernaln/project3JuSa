@@ -10,7 +10,8 @@ import pickle
 import plotly.express as px
 import numpy as np
 from dash_core_components import Tabs, Tab
- 
+from pgmpy.inference import VariableElimination
+
 
 
 path_modelo = '/home/ubuntu/'  
@@ -30,16 +31,6 @@ with open(path_data+'/filtered_data_numeric.pkl', "rb") as file:
 with open(path_modelo+'/model1.pkl', "rb") as file:
     model1 = pickle.load(file)
 
-
-
-data_plots['perc_approved_sem1'] = data_plots['curricular_units_1st_sem_approved']/data_plots['curricular_units_1st_sem_enrolled']
-data_plots['perc_approved_sem2'] = data_plots['curricular_units_2nd_sem_approved']/data_plots['curricular_units_2nd_sem_enrolled']
-data_plots['Target'] = np.where(data_plots['target'] == 'Dropout', 1, 0)
-
-# Calcula la matriz de correlación
-correlation_matrix = data.corr()
-
-filter['FAMI_ESTRATOVIVIENDA'].unique()
 valid_values = ['Estrato 1', 'Estrato 2', 'Estrato 3',  'Estrato 4', 'Estrato 5', 'Estrato 6', 'Sin Estrato']
 
 # Filter the DataFrame
@@ -65,7 +56,6 @@ fig2 = px.bar(avg_scores, x='COLE_BILINGUE', y='PUNT_GLOBAL',
 # Asumiendo que 'data' es tu DataFrame
 filtered_data['COLE_JORNADA'] = filtered_data['COLE_JORNADA'].replace('MAÃ‘ANA', 'MAÑANA')
 
-filtered_data['COLE_JORNADA'].unique()
 # Calcula los puntajes promedio para Matemáticas
 avg_scores_math = filtered_data.groupby('COLE_JORNADA')['PUNT_MATEMATICAS'].mean().reset_index()
 avg_scores_math['Materia'] = 'Matemáticas'
@@ -74,7 +64,6 @@ avg_scores_math['Materia'] = 'Matemáticas'
 avg_scores_reading = filtered_data.groupby('COLE_JORNADA')['PUNT_LECTURA_CRITICA'].mean().reset_index()
 avg_scores_reading['Materia'] = 'Lectura Crítica'
 
-filtered_data.columns
 # Calcula los puntajes promedio para Lectura Crítica
 avg_scores_science = filtered_data.groupby('COLE_JORNADA')['PUNT_C_NATURALES'].mean().reset_index()
 avg_scores_science['Materia'] = 'Ciencias Naturales'
@@ -110,72 +99,55 @@ fig3 = px.bar(combined_data,
 #fig.show()
 
 
+data['COLE_JORNADA'] = data['COLE_JORNADA'].replace('MAÃ‘ANA', 'MAÑANA')
 
 # Unique values for dropdowns
 unique_values = {
-    "Age at enrollment": data["age_at_enrollment"].unique(),
-    "Unemployment rate": data["unemployment_rate"].unique(),
-    "Inflation rate": data["inflation_rate"].unique(),
-    "Debtor": data["debtor"].unique(),
-    "Scholarship holder": data["scholarship_holder"].unique(),
-}
-
-unique_values_2 = {
-        "Scholarship holder": data["scholarship_holder"].unique(),
+    "COLE_JORNADA": data["COLE_JORNADA"].unique(),
+    "COLE_CALENDARIO": data['COLE_CALENDARIO'].unique(),
+    "COLE_BILINGUE": data['COLE_BILINGUE'].unique(),
 }
 
 # Dictionary to map original values to more descriptive ones
 readable_values = {
-    "Age at enrollment": "Age Quartile",
-    "Unemployment rate": {
-        "Q1": "Low Unemployment",
-        "Q2": "Below Average Unemployment",
-        "Q3": "Above Average Unemployment",
-        "Q4": "High Unemployment"
-    },
-    "Inflation rate": {
-        "Q1": "Low Inflation",
-        "Q2": "Below Average Inflation",
-        "Q3": "Above Average Inflation",
-        "Q4": "High Inflation"
-    },
-    "Debtor": {
-        0: "No Debt",
-        1: "Has Debt"
-    },
-    "Scholarship holder": {
-        0: "No Scholarship",
-        1: "Has Scholarship"
-    }
+
+
 }
+
+#dropdown_values = {}
+
+#for column, values in unique_values.items():
+#    if isinstance(readable_values[column], dict):
+#        dropdown_values[column] = [{'label': readable_values[column].get(value, value), 'value': value} for value in values]
+#    else:
+#        dropdown_values[column] = [{'label': value, 'value': value} for value in values]
+
 
 dropdown_values = {}
 
+dropdown_values = {}
 for column, values in unique_values.items():
-    if isinstance(readable_values[column], dict):
-        dropdown_values[column] = [{'label': readable_values[column].get(value, value), 'value': value} for value in values]
-    else:
-        dropdown_values[column] = [{'label': value, 'value': value} for value in values]
+    dropdown_values[column] = [{'label': value, 'value': value} for value in values]
+
 
 # Adjust your app layout and callback accordingly...
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 app.layout = dbc.Container([
     dbc.Tabs([
-        dbc.Tab(label='Prediction', children=[
-            html.H1("Bayesian Network Prediction for Student Dropout"),
+        dbc.Tab(label='Predicción', children=[
+            html.H1("¡Elija el mejor colegio para sus hijos!"),
     
         # Description for the dashboard
             html.Div([
-                html.P("This tool predicts the likelihood of a student dropping out based on various features."),
-                html.P("Choose the relevant values from the dropdown menus below and click 'Predict'."),
-                html.P("Descriptions:"),
+                html.P("Esta herramienta permite predecir la probabilidad de que un estudiante se encuentre por encima del percentil 50 en el ICFES."),
+                html.P("Seleccione los valores correspondientes de acuerdo a las características del colegio"),
+                html.P("Descripciones"),
                 html.Ul([
-                    html.Li("Age Quartile: Age range the student belongs to: Q1 (<19), Q2 (19-20), Q3 (20-25) and Q4 (25>)"),
-                    html.Li("Unemployment Rate: Quartile of unemployment rate during admission."),
-                    html.Li("Inflation Rate: Quartile of inflation rate during admission."),
-                    html.Li("Debtor: Indicates if the student has debt for funding the university."),
-                    html.Li("Scholarship Holder: Indicates if the student has a scholarship.")
+                    html.Li("Jornada Colegio: Tipo de Jornada del Colegio"),
+                    html.Li("Calendario Colegio: Tipo de calendario del Colegio"),
+                    html.Li("Colegio Bilingue: S si el colegio es Bilingue, N si no lo es")
+
                 ])
             ], style={"border": "1px solid #ddd", "padding": "10px", "margin-bottom": "20px", "border-radius": "5px"}),
         
@@ -184,26 +156,20 @@ app.layout = dbc.Container([
             html.Br(),
 
             # Button to predict
-            dbc.Button("Predict Dropout Model 1", id="predict-button", color="primary"),
+            dbc.Button("Predecir Resultado", id="predict-button", color="primary"),
 
             html.Br(), html.Br(),
 
             # Display results
             html.Div(id="prediction-result"),
-
-            # Button to predict
-            dbc.Button("Predict Dropout Model 2", id="predict-button-hill", color="primary"),
-
-            html.Br(), html.Br(),
-
-            # Display results
-            html.Div(id="prediction-result-hill")
         ]),
-        dbc.Tab(label='Visualizations', children=[
-            html.H1("Data Insights"),
-            dcc.Graph(id='age-target-plot', figure=fig1),
-            dcc.Graph(id='units-approved-target-plot', figure=fig2),
-            dcc.Graph(id='units-approved-debtor-plot', figure=fig3)
+        dbc.Tab(label='Visualizaciones', children=[
+            html.H1("Algunos datos interesantes"),
+            html.H2("¡Aquí podrá ver algunas visualizaciones que le permiten entender cuales son las claves del éxito académico de su hijo!"),
+
+            dcc.Graph(id='fig1', figure=fig1),
+            dcc.Graph(id='fig2', figure=fig2),
+            dcc.Graph(id='fig3', figure=fig3)
         ])
     ])
 
@@ -215,53 +181,27 @@ app.layout = dbc.Container([
     [Input("predict-button", "n_clicks")],
     [dash.dependencies.State(column, "value") for column in unique_values]
 )
-def predict(n_clicks, age_enrollment, unemployment_rate, inflation_rate, debtor, scholarship_holder):
+
+def predict(n_clicks, cole_jornada, cole_calendario, cole_bilingue):
     if n_clicks:
+        cole_jornada = cole_jornada.replace('MAÑANA', 'MAÃ‘ANA')
+
         inference = VariableElimination(model1)
         prob = inference.query(
-            variables=["actual_target"],
+            variables=["PUNT_GLOBAL"],
             evidence={
-                "Age at enrollment": age_enrollment,
-                "Unemployment rate": unemployment_rate,
-                "Inflation rate": inflation_rate,
-                "Debtor": debtor,
-                "Scholarship holder": scholarship_holder
+                "COLE_JORNADA": cole_jornada,
+                "COLE_CALENDARIO": cole_calendario,
+                "COLE_BILINGUE": cole_bilingue
             })
         
         predicted_prob = prob.values[1]
-        predicted_label = "Model 1 predicts the student will Dropout" if predicted_prob > 0.28697751471555144 else "Model predicts the student will not Dropout"
+        predicted_label = "El modelo predice que el estudiante obtendrá un resultado por encima del percentil 50" if predicted_prob > 0.504 else "El modelo predice que el estudiante obtendrá un resultado por debajo del percentil 50"
         
         return dbc.Alert([
-            html.H4(f"Probability of Dropout: {predicted_prob:.4f}"),
+            html.H4(f"Probabilidad de obtener un resultado por encima del percentil 50: {predicted_prob:.4f}"),
             html.P(predicted_label, className="mb-0")
-        ], color="success" if predicted_prob > 0.28697751471555144 else "warning")
-
-    return ""
-
-
-@app.callback(
-    Output("prediction-result-hill", "children"),
-    [Input("predict-button-hill", "n_clicks")],
-    [dash.dependencies.State(column, "value") for column in unique_values_2]
-)
-
-def predict_hill(n_clicks, scholarship_holder):
-    if n_clicks:
-        inference = VariableElimination(model2)
-        prob = inference.query(
-            variables=["actual_target"],
-            evidence={
-                "Scholarship holder": scholarship_holder
-            })
-        
-        predicted_prob = prob.values[1]
-        predicted_label = "Model 2 predicts the student will Dropout" if predicted_prob >= 0.3797150041911148 else "Model predicts the student will not Dropout"
-        
-        return dbc.Alert([
-            html.H4(f"Probability of Dropout: {predicted_prob:.4f}"),
-            html.P(predicted_label, className="mb-0")
-        ], color="success" if predicted_prob > 0.28697751471555144 else "warning")
-
+        ], color="success" if predicted_prob > 0.504 else "warning")
 
     return ""
 
